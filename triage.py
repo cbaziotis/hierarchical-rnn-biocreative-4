@@ -14,7 +14,7 @@ MODE = 'test'
 CORPUS = 'dataset/PMtask_Triage_TrainingSet.xml'
 WV_PATH = 'embeddings/PubMed-w2v.txt'
 WV_DIMS = 200
-PERSIST = False  # if True, then save the model to disk
+PERSIST = True  # if True, then save the model to disk
 ####################
 MAX_SENT_LENGTH = 45
 MAX_SENTS = 23
