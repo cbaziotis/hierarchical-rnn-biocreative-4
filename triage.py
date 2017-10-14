@@ -14,6 +14,7 @@ MODE = 'test'
 CORPUS = 'dataset/PMtask_Triage_TrainingSet.xml'
 WV_PATH = 'embeddings/PubMed-w2v.txt'
 WV_DIMS = 200
+PERSIST = False  # if True, then save the model to disk
 ####################
 MAX_SENT_LENGTH = 45
 MAX_SENTS = 23
@@ -61,32 +62,34 @@ _datasets["1-train"] = (X_train, y_train)
 _datasets["2-val"] = (X_val, y_val)
 if MODE == "train":
     _datasets["3-test"] = (X_test, y_test)
+
+# value to monitor
+monitor_value = '2-val.f1_b'
+_callbacks = []
+
 metrics_callback = MetricsCallback(datasets=_datasets, metrics=metrics,
                                    batch_size=256)
 plotting = PlottingCallback(grid_ranges=(0.3, 0.9), height=5,
                             plot_name=model_name)
-
-# value to monitor
-monitor_value = '2-val.f1_b'
-# save the model whenever monitor_value increases (mode="max")
-checkpointer = ModelCheckpoint(filepath=model_name,
-                               monitor=monitor_value, mode="max",
-                               verbose=1, save_best_only=True)
 # stop the training if the monitor_value stops increasing (mode="max")
 early_stop = EarlyStopping(monitor=monitor_value,
                            min_delta=0,
                            patience=6, verbose=1, mode='max')
 
-_callbacks = []
 _callbacks.append(metrics_callback)
 _callbacks.append(plotting)
-_callbacks.append(checkpointer)
 _callbacks.append(early_stop)
+
+if PERSIST:
+    # save the model whenever monitor_value increases (mode="max")
+    checkpointer = ModelCheckpoint(filepath=model_name,
+                                   monitor=monitor_value, mode="max",
+                                   verbose=1, save_best_only=True)
+    _callbacks.append(checkpointer)
 
 ##############################################
 # Define Model and train it
 ##############################################
-
 model = hrnn_title_abstract(embeddings, MAX_SENTS, MAX_SENT_LENGTH)
 # model = hrnn_simple(embeddings, MAX_SENTS, MAX_SENT_LENGTH)
 print(model.summary())
