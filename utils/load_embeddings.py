@@ -21,7 +21,7 @@ def load_cache_word_vectors(file):
         return pickle.load(f)
 
 
-def load_word_vectors(file, dim, omit_first=False):
+def load_word_vectors(file, dim):
     """
     Read the word vectors from a text file
     Args:
@@ -32,7 +32,6 @@ def load_word_vectors(file, dim, omit_first=False):
         word2idx (dict): dictionary of words to ids
         idx2word (dict): dictionary of ids to words
         embeddings (numpy.ndarray): the word embeddings matrix
-        omit_first (bool): omit the first line
 
     """
     # in order to avoid this time consuming operation, cache the results
@@ -40,8 +39,8 @@ def load_word_vectors(file, dim, omit_first=False):
         cache = load_cache_word_vectors(file)
         print("Loaded word embeddings from cache.")
         return cache
-    except FileNotFoundError:
-        pass
+    except OSError:
+        print("Failed to load {}".format(file))
 
     # create the necessary dictionaries and the word embeddings matrix
     if os.path.exists(file):
@@ -57,29 +56,38 @@ def load_word_vectors(file, dim, omit_first=False):
         # which will be used for zero padding (word with id = 0).
         embeddings.append(numpy.zeros(dim))
 
+        # flag indicating whether the first row of the embeddings file
+        # has a header
+        header = False
+
         # read file, line by line
         with open(file, "r", encoding="utf-8") as f:
             for i, line in enumerate(f, 1):
 
-                if omit_first and i == 1:
-                    continue
+                # skip the first row if it is a header
+                if i == 1:
+                    if len(line.split()) < dim:
+                        header = True
+                        continue
 
-                values = line.split()
+                values = line.rstrip().split(" ")
                 word = values[0]
                 vector = numpy.asarray(values[1:], dtype='float32')
 
-                idx = i - 1 if omit_first else i
+                index = i - 1 if header else i
 
-                idx2word[idx] = word
-                word2idx[word] = idx
+                idx2word[index] = word
+                word2idx[word] = index
                 embeddings.append(vector)
 
             # add an unk token, for OOV words
             if "<unk>" not in word2idx:
-                embeddings.append(numpy.random.uniform(low=-0.05, high=0.05,
-                                                       size=dim))
-                idx2word[len(embeddings) - 1] = "<unk>"
-                word2idx["<unk>"] = len(embeddings) - 1
+                idx2word[len(idx2word) + 1] = "<unk>"
+                word2idx["<unk>"] = len(word2idx) + 1
+                embeddings.append(
+                    numpy.random.uniform(low=-0.05, high=0.05, size=dim))
+
+            print(set([len(x) for x in embeddings]))
 
             print('Found %s word vectors.' % len(embeddings))
             embeddings = numpy.array(embeddings, dtype='float32')
@@ -91,4 +99,4 @@ def load_word_vectors(file, dim, omit_first=False):
 
     else:
         print("{} not found!".format(file))
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file)
+        raise OSError(errno.ENOENT, os.strerror(errno.ENOENT), file)
